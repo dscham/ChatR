@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteTargetsManager">
+    <targets>
+      <target name="WSL - Ubuntu-22.04" type="wsl" uuid="caf216b9-65a7-417a-b193-da006c932c19">
+        <config>
+          <option name="distributionMsId" value="Ubuntu-22.04" />
+          <option name="projectRootOnTarget" value="/mnt/c/devtools/jetbrains/apps/IDEA-U/ch-0/222.4345.14/jbr/bin&#10;/ChatR" />
+        </config>
+        <ContributedStateBase type="RsLanguageRuntime">
+          <config>
+            <option name="cargoPath" value="/home/dschramm/.cargo/bin/cargo" />
+            <option name="cargoVersion" value="1.65.0 (4bc8f24d3 2022-10-20)" />
+            <option name="rustcPath" value="/home/dschramm/.cargo/bin/rustc" />
+            <option name="rustcVersion" value="1.65.0 (897e37553 2022-11-02)" />
+          </config>
+        </ContributedStateBase>
+      </target>
+    </targets>
+  </component>
+</project>

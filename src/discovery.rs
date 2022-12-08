@@ -1,5 +1,5 @@
 use std::{thread, time};
-use std::borrow::BorrowMut;
+use std::borrow::{Borrow, BorrowMut};
 use std::net::{Ipv4Addr, SocketAddr, TcpStream, UdpSocket};
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -10,36 +10,24 @@ use serde::{Deserialize, Serialize};
 use rmp_serde;
 
 use chrono::Local;
+use crate::chat;
 
 static mut RUNNING: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
-pub struct Peer {
+pub struct HostInfo {
     pub name: String,
-    pub socket_addr: SocketAddr,
     pub last_seen: u64,
 }
 
-impl Peer {
-    pub fn new(name: &str, socket_addr: SocketAddr, last_seen: u64) -> Peer {
-        Peer {
-            name: name.to_string(),
-            socket_addr,
-            last_seen,
-        }
-    }
-}
-
-pub type HostInfo = Peer;
-
-#[derive(Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, PartialEq)]
 pub struct Discovered {
-    pub peer: Peer,
+    pub peer: chat::Peer,
 }
 
 #[derive(Debug)]
 pub struct Config {
-    pub host_info: Arc<Mutex<HostInfo>>,
+    pub host_info: Arc<HostInfo>,
     pub discovered_channel: Sender<Discovered>,
 }
 
@@ -76,9 +64,10 @@ fn receive_discover(socket: UdpSocket, send_received: Sender<Discovered>) {
             Ok((size, peer)) => {
                 let mut buffer = vec![0; size];
                 socket.recv_from(&mut buffer).expect("Failed to receive data");
-                let peer: Peer = rmp_serde::from_slice(&buffer).unwrap();
-                let discovered = Discovered { peer };
-                println!("Received: {:?}", discovered);
+                let peer_host_info: HostInfo = rmp_serde::from_slice(&buffer).unwrap();
+                let discovered = Discovered {
+                    peer: chat::Peer::new(&peer_host_info.name, peer, peer_host_info.last_seen)
+                };
                 send_received.send(discovered).unwrap();
             }
             Err(e) => {
@@ -88,19 +77,13 @@ fn receive_discover(socket: UdpSocket, send_received: Sender<Discovered>) {
     }
 }
 
-fn send_discover(host_info: Arc<Mutex<HostInfo>>, socket: UdpSocket) {
+fn send_discover(host_info: Arc<HostInfo>, socket: UdpSocket) {
     while is_running() {
-        let host_info = host_info.lock().unwrap();
-        let host_info = HostInfo{
-            name: host_info.name.clone(),
-            socket_addr: host_info.socket_addr,
-            last_seen: Local::now().timestamp().unsigned_abs(),
-        };
-        println!("Sending: {:?}", host_info);
+        let host_info: &HostInfo = host_info.borrow();
+
         let serialized_info = rmp_serde::to_vec(&host_info).unwrap();
-        println!("Sending Serialized: {:?}", serialized_info);
         socket.send_to(&serialized_info, "224.0.0.1:42069").expect("Failed to send data");
-        thread::sleep(time::Duration::from_secs(10));
+        thread::sleep(time::Duration::from_secs(5));
     }
 }
 

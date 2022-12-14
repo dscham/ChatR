@@ -1,18 +1,29 @@
 use std::net;
+use nanoid::nanoid;
+use chrono;
 
-#[derive(Debug, PartialEq)]
+
+#[derive(Debug)]
 pub struct Peer {
+    pub id: String,
     pub name: String,
     pub socket_addr: net::SocketAddr,
     pub last_seen: u64,
 }
 
+impl PartialEq for Peer {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
 impl Peer {
-    pub fn new(name: &str, socket_addr: net::SocketAddr, last_seen: u64) -> Peer {
+    pub fn new(id: Option<String>, name: &str, socket_addr: net::SocketAddr) -> Peer {
         Peer {
+            id: id.unwrap_or_else(|| nanoid!(6)),
             name: name.to_string(),
             socket_addr,
-            last_seen,
+            last_seen: chrono::Local::now().timestamp().unsigned_abs(),
         }
     }
 }

@@ -7,3 +7,5 @@ edition = "2021"
 chrono = "0.4.23"
 serde = { version = "1.0.148", features = ["derive"] }
 rmp-serde = "1.1.1"
+nanoid = "0.4.0"
+iced = "0.6.0"

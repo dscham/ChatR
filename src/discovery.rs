@@ -8,16 +8,28 @@ use std::sync::mpsc::Sender;
 
 use serde::{Deserialize, Serialize};
 use rmp_serde;
+use nanoid::nanoid;
 
-use chrono::Local;
 use crate::chat;
+
+const MULTICAST_ADDRESS: &str = "224.0.0.1";
+const MULTICAST_PORT: u16 = 42069;
 
 static mut RUNNING: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub struct HostInfo {
+    pub id: String,
     pub name: String,
-    pub last_seen: u64,
+}
+
+impl HostInfo {
+    pub fn new(name: &str) -> HostInfo {
+        HostInfo {
+            id: nanoid::nanoid!(6),
+            name: name.to_string(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -37,8 +49,9 @@ pub fn start(config: Config) {
         set_running(true);
 
         let receive_socket = UdpSocket::bind("0.0.0.0:42069").expect("Could not bind UDP socket");
-        receive_socket.join_multicast_v4(&Ipv4Addr::from_str("224.0.0.1").unwrap(), &Ipv4Addr::UNSPECIFIED).expect("Could not join multicast group");
-        //receive_socket.set_multicast_loop_v4(false).unwrap();
+
+        receive_socket.join_multicast_v4(&Ipv4Addr::from_str(MULTICAST_ADDRESS).unwrap(), &Ipv4Addr::UNSPECIFIED).expect("Could not join multicast group");
+        receive_socket.set_multicast_loop_v4(false).unwrap();
         let send_socket = receive_socket.try_clone().unwrap();
 
         let mut threads = vec![];
@@ -66,7 +79,7 @@ fn receive_discover(socket: UdpSocket, send_received: Sender<Discovered>) {
                 socket.recv_from(&mut buffer).expect("Failed to receive data");
                 let peer_host_info: HostInfo = rmp_serde::from_slice(&buffer).unwrap();
                 let discovered = Discovered {
-                    peer: chat::Peer::new(&peer_host_info.name, peer, peer_host_info.last_seen)
+                    peer: chat::Peer::new(Some(peer_host_info.id.clone()), &peer_host_info.name, peer)
                 };
                 send_received.send(discovered).unwrap();
             }
@@ -82,7 +95,7 @@ fn send_discover(host_info: Arc<HostInfo>, socket: UdpSocket) {
         let host_info: &HostInfo = host_info.borrow();
 
         let serialized_info = rmp_serde::to_vec(&host_info).unwrap();
-        socket.send_to(&serialized_info, "224.0.0.1:42069").expect("Failed to send data");
+        socket.send_to(&serialized_info, format!("{}:{}", MULTICAST_ADDRESS, MULTICAST_PORT)).expect("Failed to send data");
         thread::sleep(time::Duration::from_secs(5));
     }
 }

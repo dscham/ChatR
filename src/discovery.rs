@@ -45,7 +45,6 @@ pub struct Config {
 
 pub fn start(config: Config) {
     if !is_running() {
-        println!("Starting discovery with config: {:?}", config);
         set_running(true);
 
         let receive_socket = UdpSocket::bind("0.0.0.0:42069").expect("Could not bind UDP socket");
@@ -84,7 +83,6 @@ fn receive_discover(socket: UdpSocket, send_received: Sender<Discovered>) {
                 send_received.send(discovered).unwrap();
             }
             Err(e) => {
-                println!("Error: {}", e);
             }
         }
     }

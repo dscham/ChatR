@@ -1,3 +1,5 @@
+
+
 use std::borrow::{Borrow, BorrowMut};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
@@ -13,18 +15,22 @@ mod settings;
 mod discovery;
 
 fn main() {
-    println!("Please enter a username: ");
-    let username = cli::read_string();
     let peers = Arc::new(Mutex::new(chat::Peers::new()));
-    let host_info = Arc::new(discovery::HostInfo::new(&username));
+    let host_info = Arc::new(discovery::HostInfo::new("Dsc"));
 
     let (send_discovered, recv_discovered): (Sender<discovery::Discovered>, Receiver<discovery::Discovered>) = mpsc::channel();
     let handle_discovered_thread = thread::spawn(move || handle_discovered(recv_discovered, peers.clone()));
 
-    discovery::start(discovery::Config{
+    discovery::start(discovery::Config {
         host_info: host_info.clone(),
         discovered_channel: send_discovered,
     });
+
+    tauri::Builder::default()
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+
+
 }
 
 fn handle_discovered(rx: Receiver<discovery::Discovered>, peers: Arc<Mutex<chat::Peers>>) {
@@ -36,12 +42,10 @@ fn handle_discovered(rx: Receiver<discovery::Discovered>, peers: Arc<Mutex<chat:
                     continue;
                 }
                 peers.borrow_mut().push(discovered.peer);
-                println!("Discovered peer! Peers:{:?}", peers.borrow());
-            },
+            }
             Err(_) => {
-                println!("Error receiving discovered peer");
-                break
-            },
+                break;
+            }
         };
     }
 }

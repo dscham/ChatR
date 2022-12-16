@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use rmp_serde;
 use nanoid::nanoid;
 
-use crate::chat;
+use crate::{chat, state};
 
 const MULTICAST_ADDRESS: &str = "224.0.0.1";
 const MULTICAST_PORT: u16 = 42069;
@@ -39,7 +39,6 @@ pub struct Discovered {
 
 #[derive(Debug)]
 pub struct Config {
-    pub host_info: Arc<HostInfo>,
     pub discovered_channel: Sender<Discovered>,
 }
 
@@ -50,12 +49,12 @@ pub fn start(config: Config) {
         let receive_socket = UdpSocket::bind("0.0.0.0:42069").expect("Could not bind UDP socket");
 
         receive_socket.join_multicast_v4(&Ipv4Addr::from_str(MULTICAST_ADDRESS).unwrap(), &Ipv4Addr::UNSPECIFIED).expect("Could not join multicast group");
-        receive_socket.set_multicast_loop_v4(false).unwrap();
+        //receive_socket.set_multicast_loop_v4(false).unwrap();
         let send_socket = receive_socket.try_clone().unwrap();
 
         let mut threads = vec![];
         threads.push(thread::spawn(move || receive_discover(receive_socket, config.discovered_channel)));
-        threads.push(thread::spawn(move || send_discover(config.host_info.clone(), send_socket)));
+        threads.push(thread::spawn(move || send_discover( send_socket)));
 
         for thread in threads {
             thread.join().unwrap();
@@ -88,10 +87,9 @@ fn receive_discover(socket: UdpSocket, send_received: Sender<Discovered>) {
     }
 }
 
-fn send_discover(host_info: Arc<HostInfo>, socket: UdpSocket) {
+fn send_discover(socket: UdpSocket) {
     while is_running() {
-        let host_info: &HostInfo = host_info.borrow();
-
+        let host_info: HostInfo = state::load_host_info().unwrap();
         let serialized_info = rmp_serde::to_vec(&host_info).unwrap();
         socket.send_to(&serialized_info, format!("{}:{}", MULTICAST_ADDRESS, MULTICAST_PORT)).expect("Failed to send data");
         thread::sleep(time::Duration::from_secs(5));

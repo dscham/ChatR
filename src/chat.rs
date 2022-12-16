@@ -1,9 +1,10 @@
 use std::net;
 use nanoid::nanoid;
 use chrono;
+use serde::{Deserialize, Serialize};
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Peer {
     pub id: String,
     pub name: String,
@@ -14,6 +15,7 @@ pub struct Peer {
 impl PartialEq for Peer {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
+        && self.socket_addr == other.socket_addr
     }
 }
 

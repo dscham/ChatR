@@ -8,7 +8,11 @@
     <title>ChatR</title>
 </head>
 <body>
-<h1>Hello</h1>
-
+<h1 id="logged_out" style="display: none">Please choose a username</h1>
+<h1 id="logged_in" style="display: none">Hello, <a id="current_username"></a></h1>
+<div>
+    <input type="text" id="new_username" placeholder="Username"/>
+    <button onclick="changeUsername()">Change</button>
+</div>
 </body>
 </html>

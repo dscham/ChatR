@@ -11,55 +11,69 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
 use chrono;
+use crate::discovery::HostInfo;
 
 mod cli;
 mod chat;
 mod state;
 mod discovery;
 
-struct Main {
+fn main() {
+    tauri::Builder::default()
+        .setup(|tauri_context| {
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            start_discovery,
+            get_host_info,
+            save_username,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
 
-impl Main {
-    fn new() -> Self {
-        Self {}
-    }
+#[tauri::command]
+fn start_discovery() -> Result<(), String> {
+    thread::spawn(|| {
+        discovery::start();
+    });
+    Ok(())
+}
 
-    fn run(&self) {
-        let (send_discovered, recv_discovered): (Sender<discovery::Discovered>, Receiver<discovery::Discovered>) = mpsc::channel();
-        let handle_discovered_thread = thread::spawn(move || Self::handle_discovered(recv_discovered));
-
-        discovery::start(discovery::Config {
-            discovered_channel: send_discovered,
-        });
-
-        tauri::Builder::default()
-            .run(tauri::generate_context!())
-            .expect("error while running tauri application");
-    }
-
-    fn handle_discovered(rx: Receiver<discovery::Discovered>) {
-        loop {
-            match rx.recv() {
-                Ok(discovered) => {
-                    let mut peers = state::load_peers().unwrap();
-                    if peers.contains(&discovered.peer) {
-                        continue;
-                    }
-                    peers.push(discovered.peer);
-                    state::save_peers(&peers).unwrap();
-                }
-                Err(_) => {
-                    break;
-                }
-            };
+#[tauri::command]
+fn get_host_info() -> Result<HostInfo, String> {
+    match state::load_host_info() {
+        Ok(host_info) => {
+           Ok(host_info)
+        }
+        Err(e) => {
+            Err("Could not load host info".to_string())
         }
     }
 }
 
-fn main() {
-    Main::new().run();
+#[tauri::command]
+fn save_username(username: String) -> Result<HostInfo, String> {
+    let mut host_info;
+    match state::load_host_info() {
+        Ok(loaded_host_info) => {
+            host_info = loaded_host_info;
+            host_info = HostInfo {
+                id: host_info.id,
+                name: username,
+            };
+        }
+        Err(e) => {
+            host_info = HostInfo::new(&username);
+        }
+    }
+    match state::save_host_info(&host_info) {
+        Ok(_) => {
+            Ok(host_info)
+        }
+        Err(e) => {
+            Err("Could not save username".to_string())
+        }
+    }
 }
-
-
-

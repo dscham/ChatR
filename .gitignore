@@ -10,3 +10,5 @@ Cargo.lock
 **/*.rs.bk
 /.idea/sonarlint/issuestore/index.pb
 /ui/node_modules/
+/peers.chatrmp
+/host_info.chatrmp
